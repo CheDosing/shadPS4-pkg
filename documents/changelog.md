@@ -7,14 +7,34 @@ SPDX-License-Identifier: GPL-2.0-or-later
 
 Changes made in **shadPS4-pkg**, a personal fork of [shadPS4](https://github.com/shadps4-emu/shadPS4) that tracks the latest upstream build and re-adds the PKG Installer. Newest entries go at the top. The upstream shadPS4 release history follows below.
 
-Unreleased - PKG Installer re-addition (in progress)
+15/10/2026 - PKG Installer, patch downloader and Sony updates
 =================
 
-The PKG Installer was removed from upstream shadPS4. This fork brings it back on top of the current emulator core, so `.pkg` files can be extracted and installed into a game folder without a separate tool.
+**PKG Installer (restored from shadPS4 0.7.0)**
 
-- [ ] Re-implement PKG extraction and installation against the current codebase
-- [ ] Install to the configured game install folder
-- [ ] Document PKG install usage in the README
+- Brought back the PKG reader (`pkg.cpp`, `pkg_type.cpp`) and its crypto. The crypto now runs on the LibreSSL already bundled with shadPS4 instead of Crypto++, which upstream no longer ships
+- New **Install PKG** window in the launcher: choose or drop a `.pkg`, pick the game folder, see title/version/type/destination, confirm before overwriting, progress bar and cancel
+- New `--install-pkg`, `--install-dir`, `--overwrite` and `--delete-pkg` command-line options
+- Games install to `<game folder>/<TITLE ID>`, updates to `<game folder>-UPDATE` (which current shadPS4 overlays automatically), DLC to the addon folder
+- Safer than 0.7.0: malformed, truncated or retail PKGs fail with a clear message instead of reading out of bounds, partial installs are cleaned up, and free disk space is checked first
+- Fixed a 0.7.0 bug where PKGs whose file table extends past the first decrypted chunk read past the end of that buffer; those blocks are now decrypted from the file
+
+**Patch downloader**
+
+- New **Patches** window with a Community Patches tab: downloads the GoldHEN (illusion0001) and shadPS4 patch collections, lists the patches for a game, and saves which ones are enabled. Re-downloading keeps your selection
+- New `--sync-patches` command-line option
+
+**Sony update lookup**
+
+- Sony Updates tab: looks up a title's latest official update on Sony's update server and downloads the PKG in pieces, verifying each piece's SHA-1 and resuming interrupted downloads
+- New `--check-update` and `--download-update` (with `--output-dir`) command-line options
+
+**Launcher**
+
+- Running shadPS4 with no arguments now opens the launcher instead of a "this is a CLI application" message
+- W/A/S/D still navigate the launcher, but now type normally while a text box is active
+
+**Tested** on Linux with two homebrew fPKGs (Apollo Save Tool, Homebrew Store): every extracted PNG and font checksum verified, 270 corrupted PKGs installed or rejected without a crash. Game rendering could not be tested without a GPU.
 
 15/10/2026 - Fork created
 =================

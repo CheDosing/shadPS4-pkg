@@ -1,11 +1,15 @@
 // SPDX-FileCopyrightText: Copyright 2025-2026 shadPS4 Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <span>
+#include <thread>
 #include <vector>
 #include <CLI/CLI.hpp>
 #include <SDL3/SDL_messagebox.h>
@@ -18,10 +22,13 @@
 #include "common/memory_patcher.h"
 #include "common/path_util.h"
 #include "core/debugger.h"
+#include "core/downloads/community_patches.h"
+#include "core/downloads/sony_updates.h"
 #include "core/emulator_settings.h"
 #include "core/emulator_state.h"
 #include "core/file_sys/fs.h"
 #include "core/ipc/ipc.h"
+#include "core/pkg_installer.h"
 #include "core/user_settings.h"
 #include "emulator.h"
 #include "imgui/big_picture/big_picture.h"
@@ -31,6 +38,115 @@
 #elif defined(__APPLE__)
 #include <sys/sysctl.h>
 #endif
+
+namespace {
+
+std::filesystem::path Utf8Path(const std::string& s) {
+    return std::filesystem::path(std::u8string(s.begin(), s.end()));
+}
+
+int InstallPkgFromCli(const std::filesystem::path& pkg,
+                      const std::optional<std::filesystem::path>& installDir, bool overwrite,
+                      bool deletePkg) {
+    std::filesystem::path dir;
+    if (installDir) {
+        dir = *installDir;
+    } else if (const auto dirs = EmulatorSettings.GetGameInstallDirs(); !dirs.empty()) {
+        dir = dirs.front();
+    }
+
+    const auto plan = Core::PkgInstaller::PlanInstall(pkg, dir);
+    if (!plan.CanInstall()) {
+        std::cerr << "Cannot install " << Common::FS::PathToUTF8String(pkg) << ": " << plan.error
+                  << std::endl;
+        return 1;
+    }
+    std::cout << fmt::format("{} [{}] {} {} -> {}", plan.title, plan.title_id,
+                             Core::PkgInstaller::KindName(plan.kind), plan.pkg_version,
+                             Common::FS::PathToUTF8String(plan.target_path))
+              << std::endl;
+    if (!plan.overwrite_warning.empty()) {
+        if (!overwrite) {
+            std::cerr << plan.overwrite_warning << " Pass --overwrite to continue." << std::endl;
+            return 1;
+        }
+        std::cout << plan.overwrite_warning << std::endl;
+    }
+
+    Core::PkgInstaller::Progress progress;
+    std::atomic<bool> finished{false};
+    std::jthread reporter([&] {
+        u32 last = std::numeric_limits<u32>::max();
+        while (!finished) {
+            const u32 done = progress.files_done;
+            if (done != last && progress.files_total != 0) {
+                std::cout << "\rExtracting " << done << " / " << progress.files_total << std::flush;
+                last = done;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        }
+    });
+    const auto result = Core::PkgInstaller::RunInstall(plan, progress, deletePkg);
+    finished = true;
+    reporter.join();
+    std::cout << "\r" << std::string(40, ' ') << "\r";
+    (result.success ? std::cout : std::cerr) << result.message << std::endl;
+    return result.success ? 0 : 1;
+}
+
+int SyncPatchesFromCli() {
+    int failures = 0;
+    for (const auto& repo : Core::Downloads::CommunityPatches::Repos()) {
+        Core::Downloads::CommunityPatches::SyncProgress progress;
+        const auto result = Core::Downloads::CommunityPatches::SyncRepo(repo, progress, nullptr);
+        (result.success ? std::cout : std::cerr) << result.message << std::endl;
+        failures += result.success ? 0 : 1;
+    }
+    return failures == 0 ? 0 : 1;
+}
+
+int SonyUpdateFromCli(const std::string& titleId, bool download,
+                      const std::optional<std::filesystem::path>& outputDir) {
+    namespace Sony = Core::Downloads::SonyUpdates;
+    const auto info = Sony::Lookup(titleId);
+    if (!info.found) {
+        std::cerr << info.error << std::endl;
+        return 1;
+    }
+    std::cout << fmt::format("{} [{}]\n  Latest version: {}\n  Size: {}\n  Type: {}\n"
+                             "  Content ID: {}\n  Manifest: {}",
+                             info.title, info.title_id, info.version, Sony::FormatSize(info.size),
+                             info.type, info.content_id, info.manifest_url)
+              << std::endl;
+    if (!download) {
+        return 0;
+    }
+
+    const auto dir = outputDir.value_or(Common::FS::GetUserPath(Common::FS::PathType::DownloadDir));
+    Sony::DownloadProgress progress;
+    std::atomic<bool> finished{false};
+    std::jthread reporter([&] {
+        while (!finished) {
+            if (progress.bytes_total != 0) {
+                std::cout << fmt::format("\r{}{} / {} (part {}/{})   ",
+                                         progress.verifying ? "Checking " : "",
+                                         Sony::FormatSize(progress.bytes_done),
+                                         Sony::FormatSize(progress.bytes_total),
+                                         progress.piece.load(), progress.pieces.load())
+                          << std::flush;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+    });
+    const auto result = Sony::Download(info, dir, progress, nullptr);
+    finished = true;
+    reporter.join();
+    std::cout << std::endl;
+    (result.success ? std::cout : std::cerr) << result.message << std::endl;
+    return result.success ? 0 : 1;
+}
+
+} // namespace
 
 int main(int argc, char* argv[]) {
 #ifdef _WIN32
@@ -69,6 +185,15 @@ int main(int argc, char* argv[]) {
     bool sameProcess = false;
     bool append_log{};
 
+    std::optional<std::string> installPkg;
+    std::optional<std::filesystem::path> installDir;
+    bool installOverwrite = false;
+    bool installDeletePkg = false;
+    bool syncPatches = false;
+    std::optional<std::string> checkUpdate;
+    std::optional<std::string> downloadUpdate;
+    std::optional<std::filesystem::path> outputDir;
+
     std::optional<std::filesystem::path> addGameFolder;
     std::optional<std::filesystem::path> setAddonFolder;
     std::optional<std::string> patchFile;
@@ -103,6 +228,20 @@ int main(int argc, char* argv[]) {
     app.add_flag("--config-global", configGlobal);
     app.add_flag("--log-append", append_log);
 
+    app.add_option("--install-pkg", installPkg, "Install a game, update or DLC from a .pkg file")
+        ->check(CLI::ExistingFile);
+    app.add_option("--install-dir", installDir,
+                   "Game folder to install into (default: first configured game folder)");
+    app.add_flag("--overwrite", installOverwrite, "Allow --install-pkg to overwrite an install");
+    app.add_flag("--delete-pkg", installDeletePkg, "Delete the .pkg after a successful install");
+    app.add_flag("--sync-patches", syncPatches,
+                 "Download or update the community patch repositories");
+    app.add_option("--check-update", checkUpdate,
+                   "Look up the latest official update for a title ID on Sony's server");
+    app.add_option("--download-update", downloadUpdate,
+                   "Download the latest official update PKG for a title ID");
+    app.add_option("--output-dir", outputDir, "Folder for --download-update");
+
     app.add_option("--add-game-folder", addGameFolder)->check(CLI::ExistingDirectory);
     app.add_option("--set-addon-folder", setAddonFolder)->check(CLI::ExistingDirectory);
     app.add_option("--mount", mounts, "Mount source to destination");
@@ -110,17 +249,6 @@ int main(int argc, char* argv[]) {
 
     // ---- Capture args after `--` verbatim ----
     app.allow_extras();
-
-    // ---- No-args behavior ----
-    if (argc == 1) {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "shadPS4",
-                                 "This is a CLI application. Please use the '-b' flag for Big "
-                                 "Picture mode, or QTLauncher for a standalone GUI:\n"
-                                 "https://github.com/shadps4-emu/shadps4-qtlauncher/releases",
-                                 nullptr);
-        std::cout << app.help();
-        return -1;
-    }
 
     try {
         bool double_dash_found = false;
@@ -145,6 +273,11 @@ int main(int argc, char* argv[]) {
         return app.exit(e);
     }
 
+    // With no arguments, open the launcher (game list, PKG installer, patches).
+    if (argc == 1) {
+        bigPicture = true;
+    }
+
     if (waitPid)
         Core::Debugger::WaitForPid(*waitPid);
 
@@ -161,6 +294,20 @@ int main(int argc, char* argv[]) {
     // Load configurations
     EmulatorSettings.Load();
     UserSettings.Load();
+
+    if (installPkg) {
+        return InstallPkgFromCli(Utf8Path(*installPkg), installDir, installOverwrite,
+                                 installDeletePkg);
+    }
+
+    if (syncPatches) {
+        return SyncPatchesFromCli();
+    }
+
+    if (checkUpdate || downloadUpdate) {
+        return SonyUpdateFromCli(downloadUpdate.value_or(checkUpdate.value_or("")),
+                                 downloadUpdate.has_value(), outputDir);
+    }
 
     if (bigPicture) {
         BigPictureMode::Launch(argv[0], sameProcess);

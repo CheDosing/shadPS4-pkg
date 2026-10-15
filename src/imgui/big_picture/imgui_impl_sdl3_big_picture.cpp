@@ -501,6 +501,25 @@ bool ImGui_ImplSDL3_ProcessEvent(const SDL_Event* event) {
         //     SDL_GetKeyName(event->key.key), event->key.scancode,
         //     SDL_GetScancodeName(event->key.scancode), event->key.mod);
         ImGuiKey key = ImGui_ImplSDL3_KeyEventToImGuiKey(event->key.key, event->key.scancode);
+        // WASD navigates the menus, but must type letters while a text field is active.
+        if (io.WantTextInput) {
+            switch (event->key.key) {
+            case SDLK_W:
+                key = ImGuiKey_W;
+                break;
+            case SDLK_A:
+                key = ImGuiKey_A;
+                break;
+            case SDLK_S:
+                key = ImGuiKey_S;
+                break;
+            case SDLK_D:
+                key = ImGuiKey_D;
+                break;
+            default:
+                break;
+            }
+        }
         io.AddKeyEvent(key, (event->type == SDL_EVENT_KEY_DOWN));
         io.SetKeyEventNativeData(
             key, event->key.key, event->key.scancode,

@@ -30,20 +30,24 @@ SPDX-License-Identifier: GPL-2.0-or-later
 | | Upstream shadPS4 | shadPS4-pkg |
 |---|:---:|:---:|
 | Latest emulator core | ✅ | ✅ (synced from upstream) |
-| Install games from `.pkg` files | ❌ (removed) | 🚧 Being re-added |
+| Install games, updates and DLC from `.pkg` files | ❌ (removed after 0.7.0) | ✅ Restored |
+| Community patch downloader (GoldHEN + shadPS4 repos) | ❌ | ✅ |
+| Official update lookup and download from Sony's servers | ❌ | ✅ |
+| Opens a launcher when started with no arguments | ❌ | ✅ |
 
-The PKG Installer was removed from upstream shadPS4. This fork re-adds it on top of the current codebase, so `.pkg` files can be extracted and installed into a game folder without a separate tool.
+The PKG Installer was removed from upstream shadPS4 after 0.7.0. This fork brings it back on top of the current codebase, in the built-in launcher and on the command line, so `.pkg` files can be extracted and installed into a game folder without a separate tool.
 
 Everything else (the emulator core, compatibility, and settings) follows upstream as closely as possible.
 
 # Status
 
 > [!IMPORTANT]
-> shadPS4 itself is early in development, and the PKG Installer in this fork is a work in progress. Don't expect a flawless experience.
+> shadPS4 itself is early in development, so many games still won't run. Don't expect a flawless experience.
 
 - [x] Fork synced with the latest upstream shadPS4
-- [ ] PKG Installer re-implemented
-- [ ] PKG install usage documented below
+- [x] PKG Installer re-implemented (window + `--install-pkg`)
+- [x] Community patch downloader
+- [x] Sony update lookup and downloader
 
 See the [**changelog**](./documents/changelog.md) for what has changed in this fork.
 
@@ -59,9 +63,19 @@ This fork builds exactly the same way as upstream. Follow the guide for your pla
 > [!IMPORTANT]
 > macOS users need at least macOS 26.0 to run shadPS4. Intel Macs are not supported.
 
-This repository is the emulator core and has no GUI. For a graphical front end, the upstream [**QtLauncher**](https://github.com/shadps4-emu/shadps4-qtlauncher/releases) can be pointed at a build of this fork.
+No extra libraries are needed for the new features: they use the SDL, Dear ImGui, LibreSSL and cpp-httplib copies that already ship in `externals/`.
 
 # Usage
+
+### The launcher
+
+Start shadPS4 **with no arguments** (or with `-b`) to open the launcher. It lists your installed games; click one to play. The buttons along the bottom open:
+
+- **Install PKG**: pick a `.pkg` (or drop one on the window), choose a game folder, and install. It shows the title, version, type (game, update or DLC) and where it will go, and asks before overwriting anything.
+- **Patches**: the patch and update window (see below).
+- **Settings**: game folders and emulator options.
+
+### Command line
 
 Run `shadPS4 --help` for the full list of commands. Common patterns:
 
@@ -75,7 +89,42 @@ shadPS4 CUSA00001 -- -flag1 -flag2                    # Pass -flag1 and -flag2 t
 
 ### Installing a PKG
 
-*Coming soon.* Instructions will be added here once the PKG Installer is finished.
+From the launcher, use **Install PKG**. From the command line:
+
+```sh
+shadPS4 --install-pkg Game.pkg                          # Install into your first game folder
+shadPS4 --install-pkg Game.pkg --install-dir D:/Games   # Install into a specific folder
+shadPS4 --install-pkg Game.pkg --overwrite --delete-pkg # Replace an existing install, then delete the .pkg
+```
+
+Where things go:
+
+| PKG type | Installed to |
+|---|---|
+| Game | `<game folder>/<TITLE ID>` |
+| Update | Next to the game, in `<game folder name>-UPDATE` (shadPS4 overlays it on the game) |
+| DLC | `<addon folder>/<TITLE ID>/<entitlement>` (set the addon folder with `--set-addon-folder`) |
+
+> [!NOTE]
+> Only **fake (fPKG) and homebrew** PKGs can be installed, the same as shadPS4 0.7.0. Retail PKGs, including official updates from Sony, are encrypted with console keys and can't be decrypted here. An update needs its base game installed first.
+
+### Patches and official updates
+
+Open **Patches** in the launcher and pick a game (or type any title ID).
+
+- **Community Patches** downloads the patch collections from [GoldHEN / illusion0001](https://github.com/illusion0001/PS4-PS5-Game-Patch) and [shadPS4](https://github.com/shadps4-emu/ps4_cheats), lists the ones for your game, and lets you switch them on. Enabled patches apply automatically when the game boots (start with `-i` to skip them). Most patches only work on the exact game version they were made for; mismatches are highlighted.
+- **Sony Updates** looks up a title's latest official update on Sony's public update server and downloads the PKG, checking every piece's checksum. Interrupted downloads resume. These PKGs are for your own PS4; shadPS4 can't install them.
+
+The same is available from the command line:
+
+```sh
+shadPS4 --sync-patches                                     # Download or update both patch collections
+shadPS4 --check-update CUSA00900                           # Show the latest official update for a title
+shadPS4 --download-update CUSA00900 --output-dir D:/PS4    # Download it (default: user/download)
+```
+
+> [!TIP]
+> Behind a proxy? The downloaders honor `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY`. Mirrors can be set with `SHADPS4_PKG_GITHUB_API`, `SHADPS4_PKG_GITHUB_RAW` and `SHADPS4_PKG_SONY_UPDATE_BASE`.
 
 # Keyboard and mouse mappings
 

@@ -936,6 +936,21 @@ set(CORE src/core/aerolib/stubs.cpp
          src/core/file_format/trp.h
          src/core/file_format/npbind.cpp
          src/core/file_format/npbind.h
+         src/core/file_format/pkg.cpp
+         src/core/file_format/pkg.h
+         src/core/file_format/pkg_type.cpp
+         src/core/file_format/pkg_type.h
+         src/core/crypto/crypto.cpp
+         src/core/crypto/crypto.h
+         src/core/crypto/keys.h
+         src/core/pkg_installer.cpp
+         src/core/pkg_installer.h
+         src/core/downloads/http_client.cpp
+         src/core/downloads/http_client.h
+         src/core/downloads/community_patches.cpp
+         src/core/downloads/community_patches.h
+         src/core/downloads/sony_updates.cpp
+         src/core/downloads/sony_updates.h
          src/core/file_sys/fs.cpp
          src/core/file_sys/fs.h
          src/core/file_sys/ifile.cpp
@@ -1264,6 +1279,10 @@ set(IMGUI src/imgui/imgui_config.h
           src/imgui/big_picture/imgui_impl_sdl3_big_picture.h
           src/imgui/big_picture/imgui_impl_sdlrenderer3.cpp
           src/imgui/big_picture/imgui_impl_sdlrenderer3.h
+          src/imgui/big_picture/pkg_install_window.cpp
+          src/imgui/big_picture/pkg_install_window.h
+          src/imgui/big_picture/patch_window.cpp
+          src/imgui/big_picture/patch_window.h
 )
 
 set(INPUT src/input/controller.cpp

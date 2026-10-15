@@ -17,6 +17,8 @@
 #include "imgui/big_picture/big_picture.h"
 #include "imgui/big_picture/imgui_impl_sdl3_big_picture.h"
 #include "imgui/big_picture/imgui_impl_sdlrenderer3.h"
+#include "imgui/big_picture/patch_window.h"
+#include "imgui/big_picture/pkg_install_window.h"
 #include "imgui/big_picture/settings_dialog_imgui.h"
 #include "imgui/imgui_std.h"
 #include "imgui/renderer/font_stack.h"
@@ -28,6 +30,8 @@ constexpr float gameImageSize = 200.f;
 
 bool done = false;
 bool showSettings = false;
+bool showInstallPkg = false;
+bool showPatches = false;
 
 std::filesystem::path runEbootPath = "";
 std::vector<IconInfo> gameIcons = {};
@@ -236,6 +240,10 @@ void scanFolder(std::vector<IconInfo>& icons, std::filesystem::path folderPath, 
             if (const auto title_id = psf.GetString("TITLE_ID"); title_id.has_value()) {
                 icon.serial = *title_id;
             }
+
+            if (const auto app_ver = psf.GetString("APP_VER"); app_ver.has_value()) {
+                icon.appVersion = *app_ver;
+            }
         } else {
             it.increment(ec);
             continue;
@@ -321,6 +329,18 @@ void Launch(char* executableName, bool sameProcess) {
     ImGui_ImplSDLRenderer3_Init(renderer);
 
     ImGuiEmuSettings::SettingsWindow settingsWindow(false);
+    PkgInstallWindow installWindow;
+    PatchWindow patchWindow;
+
+    const auto patchGames = [] {
+        std::vector<PatchGame> games;
+        for (const auto& icon : gameIcons) {
+            if (!icon.serial.empty()) {
+                games.push_back({icon.title, icon.serial, icon.appVersion});
+            }
+        }
+        return games;
+    };
 
     float sliderScale = 1.0f;
     auto applySettings = [&] {
@@ -338,6 +358,20 @@ void Launch(char* executableName, bool sameProcess) {
             ImGui_ImplSDL3_ProcessEvent(&event);
             if (event.type == SDL_EVENT_QUIT) {
                 done = true;
+            }
+            if (event.type == SDL_EVENT_DROP_FILE && event.drop.data != nullptr) {
+                const std::string dropped{event.drop.data};
+                std::string extension =
+                    dropped.size() >= 4 ? dropped.substr(dropped.size() - 4) : std::string{};
+                std::transform(extension.begin(), extension.end(), extension.begin(),
+                               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                if (extension == ".pkg" && !installWindow.IsBusy()) {
+                    installWindow.Open(
+                        std::filesystem::path(std::u8string(dropped.begin(), dropped.end())));
+                    showSettings = false;
+                    showPatches = false;
+                    showInstallPkg = true;
+                }
             }
         }
 
@@ -412,10 +446,25 @@ void Launch(char* executableName, bool sameProcess) {
         ImGui::SameLine();
 
         // Align buttons right
-        float buttonsWidth = ImGui::CalcTextSize("Settings").x + ImGui::CalcTextSize("Exit").x +
-                             ImGui::GetStyle().FramePadding.x * 4.0f +
-                             ImGui::GetStyle().ItemSpacing.x;
+        float buttonsWidth =
+            ImGui::CalcTextSize("Install PKG").x + ImGui::CalcTextSize("Patches").x +
+            ImGui::CalcTextSize("Settings").x + ImGui::CalcTextSize("Exit").x +
+            ImGui::GetStyle().FramePadding.x * 8.0f + ImGui::GetStyle().ItemSpacing.x * 3.0f;
         ImGui::SetCursorPosX(ImGui::GetWindowContentRegionMax().x - buttonsWidth);
+
+        if (ImGui::Button("Install PKG")) {
+            installWindow.Open();
+            showInstallPkg = true;
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Patches")) {
+            patchWindow.Open(patchGames());
+            showPatches = true;
+        }
+
+        ImGui::SameLine();
 
         if (ImGui::Button("Settings")) {
             EmulatorSettings.SetBigPictureScale(static_cast<int>(uiScale * 1000));
@@ -455,6 +504,10 @@ void Launch(char* executableName, bool sameProcess) {
 
         if (showSettings) {
             settingsWindow.DrawSettings(&showSettings, applySettings);
+        } else if (showInstallPkg) {
+            installWindow.Draw(&showInstallPkg, uiScale, [&] { GetGameIconInfo(gameIcons); });
+        } else if (showPatches) {
+            patchWindow.Draw(&showPatches, uiScale);
         }
 
         ImGui::PopStyleVar(8);

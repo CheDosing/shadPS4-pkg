@@ -3,9 +3,13 @@ SPDX-FileCopyrightText: 2024 shadPS4 Emulator Project
 SPDX-License-Identifier: GPL-2.0-or-later
 -->
 
-## Build shadPS4 for Linux
+## Build shadPS4-pkg for Linux
 
-First and foremost, Clang 19 is the **recommended compiler** as it is used for official Linux builds and CI. GCC 14 is also tested by CI. If you build with GCC, you might encounter issues — please report any you find. Additionally, if you choose to use GCC, please build shadPS4 with Clang at least once before creating an `[APP BUG]` issue or submitting a pull request.
+> [!NOTE]
+> This guide is for **shadPS4-pkg**, an unofficial personal fork of [shadPS4](https://github.com/shadps4-emu/shadPS4) that re-adds the PKG Installer. It builds exactly the same way as upstream; only the repository you clone is different.
+> Please don't report build problems from this fork to the upstream shadPS4 team. Try building [upstream shadPS4](https://github.com/shadps4-emu/shadPS4) first to check whether the problem is specific to this fork.
+
+First and foremost, Clang 19 is the **recommended compiler** as it is used for official Linux builds and CI. GCC 14 is also tested by upstream CI, but you might run into issues with it. If you hit a build problem with GCC, try building with Clang before assuming the code is broken.
 
 ## Preparatory steps
 
@@ -95,9 +99,11 @@ This option is **highly recommended** for distributions with immutable/atomic fi
 The project uses submodules to manage dependencies, and they need to be initialized before you can build the project. To achieve this, make sure you've cloned the repository with the --recursive flag
 
 ```bash
-git clone --recursive https://github.com/shadps4-emu/shadPS4.git
-cd shadPS4
+git clone --recursive https://github.com/CheDosing/shadPS4-pkg.git
+cd shadPS4-pkg
 ```
+
+The rest of this guide calls the cloned folder the "shadPS4 directory"; for this fork that's `shadPS4-pkg`.
 
 ## Building
 
@@ -132,7 +138,7 @@ You can also specify the Game ID as an argument for which game to boot, as long 
 
 `cmake-gui` should be installed by default alongside `cmake`, if not search for the package in your package manager and install it.
 
-Open `cmake-gui` and specify the source code and build directories. If you cloned the source code to your Home directory, it would be `/home/user/shadPS4` and `/home/user/shadPS4/build`.
+Open `cmake-gui` and specify the source code and build directories. If you cloned the source code to your Home directory, it would be `/home/user/shadPS4-pkg` and `/home/user/shadPS4-pkg/build`.
 
 Click on Configure, select "Unix Makefiles", select "Specify native compilers", click Next and choose `clang-19` and `clang++-19` as the C and CXX compilers. Click on Finish and let it configure the project.
 
@@ -162,6 +168,6 @@ When hovering over Project Status > Configure, there should be an icon titled "C
 
 If you want to debug it, change the build type under Project Status > Configure to Debug (it should be the default) and compile it, then click on the icon in Project Status > Debug. If you simply want to launch the shadPS4 executable from within VSCode, click on the icon in Project Status > Launch.
 
-Don't forget to change the launch target for both options to the shadPS4 executable inside shadPS4/build:
+Don't forget to change the launch target for both options to the shadPS4 executable inside shadPS4-pkg/build:
 
 ![image](https://raw.githubusercontent.com/shadps4-emu/shadPS4/refs/heads/main/documents/Screenshots/Linux/5.png)

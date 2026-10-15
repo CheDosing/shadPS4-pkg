@@ -3,7 +3,11 @@ SPDX-FileCopyrightText: 2025 shadPS4 Emulator Project
 SPDX-License-Identifier: GPL-2.0-or-later
 -->
 
-# Build shadPS4 for Windows
+# Build shadPS4-pkg for Windows
+
+> [!NOTE]
+> This guide is for **shadPS4-pkg**, an unofficial personal fork of [shadPS4](https://github.com/shadps4-emu/shadPS4) that re-adds the PKG Installer. It builds exactly the same way as upstream; only the repository you clone is different.
+> Please don't report build problems from this fork to the upstream shadPS4 team. Try building [upstream shadPS4](https://github.com/shadps4-emu/shadPS4) first to check whether the problem is specific to this fork.
 
 This tutorial reads as if you have none of the prerequisites already installed. If you do, just ignore the steps regarding installation.
 > [!WARNING]
@@ -28,13 +32,13 @@ Go through the Git for Windows installation as normal
 
 ### Cloning the source code
 
-1. Open Git for Windows, navigate to a place where you want to store the shadPS4 source code folder
+1. Open Git for Windows, navigate to a place where you want to store the shadPS4-pkg source code folder
 2. Clone the repository by running  
-    `git clone --depth 1 --recursive https://github.com/shadps4-emu/shadPS4`
+    `git clone --depth 1 --recursive https://github.com/CheDosing/shadPS4-pkg`
 
 ### Compiling with Visual Studio GUI
 
-1. Open up Visual Studio, select `Open a local folder` and select the folder with the shadPS4 source code. The folder should contain `CMakeLists.txt`
+1. Open up Visual Studio, select `Open a local folder` and select the `shadPS4-pkg` folder. The folder should contain `CMakeLists.txt`
 2. Change Clang x64 Debug to Clang x64 Release if you want a regular, non-debug build.
 3. Change the project to build to shadps4.exe
 4. Build -> Build All
@@ -111,7 +115,7 @@ Save the file as `.vsconfig` and run the following command:
 
 %userprofile%\Downloads\vs_BuildTools.exe --passive --config ".vsconfig"
 
-Be carefull path to vs_BuildTools.exe and .vsconfig file.
+Be careful with the path to vs_BuildTools.exe and .vsconfig file.
 ```
 
 __This will install the necessary components to build shadPS4.__
@@ -170,11 +174,9 @@ shadps4/
 
 ### Cloning the source code
 
-1. Open your terminal and where to shadPS4 folder: `cd shadps4\shared`
-3. Clone the repository by running  
-    `git clone --depth 1 --recursive https://github.com/shadps4-emu/shadPS4 .`
-
-_or fork link_
+1. Open your terminal and go to the shadPS4 folder: `cd shadps4\shared`
+2. Clone the repository by running  
+    `git clone --depth 1 --recursive https://github.com/CheDosing/shadPS4-pkg .`
 
 * If you have already cloned repo:
 ```bash
@@ -188,11 +190,11 @@ git submodule update --init --recursive
 
 _These plugins are suggested in the workspace file above and are already configured._
 
-![CMake Tools](https://raw.githubusercontent.com/shadps4-emu/shadPS4/refs/heads/main/documents/Screenshots/windows/vscode-ext-1.png)
+![CMake Tools](https://raw.githubusercontent.com/shadps4-emu/shadPS4/refs/heads/main/documents/Screenshots/Windows/vscode-ext-1.png)
 
-![Clangd](https://raw.githubusercontent.com/shadps4-emu/shadPS4/refs/heads/main/documents/Screenshots/windows/vscode-ext-2.png)
+![Clangd](https://raw.githubusercontent.com/shadps4-emu/shadPS4/refs/heads/main/documents/Screenshots/Windows/vscode-ext-2.png)
 
-![Clang Format](https://raw.githubusercontent.com/shadps4-emu/shadPS4/refs/heads/main/documents/Screenshots/windows/vscode-ext-3.png)
+![Clang Format](https://raw.githubusercontent.com/shadps4-emu/shadPS4/refs/heads/main/documents/Screenshots/Windows/vscode-ext-3.png)
 
 ### Building
 1. Open VS Code, `File > Open workspace from file > shadps4.code-workspace`
@@ -205,7 +207,7 @@ Your shadps4.exe will be in `shadps4\shared\Build\x64-Clang-Release\`
 ## Option 3: MSYS2/MinGW
 
 > [!IMPORTANT]
-> Building with MSYS2 is broken as of right now, the only way to build on Windows is to use [Option 1: Visual Studio 2022](https://github.com/shadps4-emu/shadPS4/blob/main/documents/building-windows.md#option-1-visual-studio-2022) or [Option 2: VSCode with Visual Studio Build Tools](#option-2-vscode-with-visual-studio-build-tools).
+> Building with MSYS2 is broken as of right now, the only way to build on Windows is to use [Option 1: Visual Studio 2022](#option-1-visual-studio-2022) or [Option 2: VSCode with Visual Studio Build Tools](#option-2-vscode-with-visual-studio-build-tools).
 
 ### (Prerequisite) Download [**MSYS2**](https://www.msys2.org/)
 
@@ -218,8 +220,8 @@ Normal x86-based computers, follow:
 1. Open "MSYS2 MINGW64" from your new applications
 2. Run `pacman -Syu`, let it complete;
 3. Run `pacman -S --needed git mingw-w64-x86_64-binutils mingw-w64-x86_64-clang mingw-w64-x86_64-cmake mingw-w64-x86_64-rapidjson mingw-w64-x86_64-ninja mingw-w64-x86_64-ffmpeg`
-4. Run `git clone --depth 1 --recursive https://github.com/shadps4-emu/shadPS4`
-5. Run `cd shadPS4`
+4. Run `git clone --depth 1 --recursive https://github.com/CheDosing/shadPS4-pkg`
+5. Run `cd shadPS4-pkg`
 6. Run `cmake -S . -B build -DCMAKE_C_COMPILER="clang.exe" -DCMAKE_CXX_COMPILER="clang++.exe" -DCMAKE_CXX_FLAGS="-O2 -march=native"`
 7. Run `cmake --build build`
 8. To run the finished product, run `./build/shadPS4.exe`
@@ -229,8 +231,8 @@ ARM64-based computers, follow:
 1. Open "MSYS2 CLANGARM64" from your new applications
 2. Run `pacman -Syu`, let it complete;
 3. Run `pacman -S --needed git mingw-w64-clang-aarch64-binutils mingw-w64-clang-aarch64-clang mingw-w64-clang-aarch64-rapidjson mingw-w64-clang-aarch64-cmake mingw-w64-clang-aarch64-ninja mingw-w64-clang-aarch64-ffmpeg`
-4. Run `git clone --depth 1 --recursive https://github.com/shadps4-emu/shadPS4`
-5. Run `cd shadPS4`
+4. Run `git clone --depth 1 --recursive https://github.com/CheDosing/shadPS4-pkg`
+5. Run `cd shadPS4-pkg`
 6. Run `cmake -S . -B build -DCMAKE_C_COMPILER="clang.exe" -DCMAKE_CXX_COMPILER="clang++.exe" -DCMAKE_CXX_FLAGS="-O2 -march=native"`
 7. Run `cmake --build build`
 8. To run the finished product, run `./build/shadPS4.exe`

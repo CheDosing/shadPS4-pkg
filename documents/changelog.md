@@ -3,6 +3,32 @@ SPDX-FileCopyrightText: 2026 shadPS4 Emulator Project
 SPDX-License-Identifier: GPL-2.0-or-later
 -->
 
+# shadPS4-pkg changelog
+
+Changes made in **shadPS4-pkg**, a personal fork of [shadPS4](https://github.com/shadps4-emu/shadPS4) that tracks the latest upstream build and re-adds the PKG Installer. Newest entries go at the top. The upstream shadPS4 release history follows below.
+
+Unreleased - PKG Installer re-addition (in progress)
+=================
+
+The PKG Installer was removed from upstream shadPS4. This fork brings it back on top of the current emulator core, so `.pkg` files can be extracted and installed into a game folder without a separate tool.
+
+- [ ] Re-implement PKG extraction and installation against the current codebase
+- [ ] Install to the configured game install folder
+- [ ] Document PKG install usage in the README
+
+15/10/2026 - Fork created
+=================
+
+- Forked from upstream shadPS4 at commit `805e12c` (usbd: Implement libSceUsbStorage HLE for virtual USB media access, #5338)
+- Reworked the README for the fork: unofficial-fork notice, "What's different" table, status checklist, and upstream credits
+- Logo now links to the original image in the upstream repository
+- Added an AI-assistance disclosure (Claude Opus 5.5) to the README
+- Updated the Linux and Windows build guides to clone this fork and to direct build problems away from the upstream team
+
+---
+
+# Upstream shadPS4 changelog
+
 v0.4.0 31/10/2024 - codename divicius
 =================
 

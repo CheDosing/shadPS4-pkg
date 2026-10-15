@@ -45,6 +45,8 @@ Everything else (the emulator core, compatibility, and settings) follows upstrea
 - [ ] PKG Installer re-implemented
 - [ ] PKG install usage documented below
 
+See the [**changelog**](./documents/changelog.md) for what has changed in this fork.
+
 # Building
 
 This fork builds exactly the same way as upstream. Follow the guide for your platform:
